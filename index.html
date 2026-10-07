@@ -3,104 +3,140 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Online Exam</title>
+<title>মেডিকেল ভর্তি পরীক্ষা</title>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f2f5f8;--card:#fff;--ink:#16202e;--mute:#5d6b7c;--line:#d9e0e8;--acc:#0b6e8a;--ok:#13795b;--bad:#b3261e;--okbg:#e4f5ee;--badbg:#fdeceb}
-@media(prefers-color-scheme:dark){:root{--bg:#10161d;--card:#18212b;--ink:#e8edf3;--mute:#93a1b2;--line:#2b3744;--acc:#4cb5d3;--ok:#4cc79f;--bad:#ff8a80;--okbg:#12342a;--badbg:#3a1a18}}
+:root{--bg:#f6f2f7;--card:#fff;--ink:#241b2f;--mute:#6b5f78;--line:#e3d9ea;--acc:#a23b72;--ok:#13795b;--bad:#b3261e;--okbg:#e4f5ee;--badbg:#fdeceb;--tip:#fff6dc}
+@media(prefers-color-scheme:dark){:root{--bg:#171220;--card:#211a2e;--ink:#f1eaf7;--mute:#a99bb9;--line:#35294a;--acc:#ec7fb8;--ok:#4cc79f;--bad:#ff8a80;--okbg:#12342a;--badbg:#3a1a18;--tip:#3b3217}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,"Noto Sans Bengali","Segoe UI",sans-serif}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.65 "Hind Siliguri","Noto Sans Bengali",system-ui,sans-serif}
 .wrap{max-width:760px;margin:0 auto;padding:16px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:14px}
-h1{font-size:1.5rem;margin:0 0 6px}
-input[type=text]{width:100%;padding:11px;margin:6px 0 14px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
-button{background:var(--acc);color:#fff;border:0;border-radius:6px;padding:12px 22px;font:inherit;font-weight:600;cursor:pointer}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:14px}
+h1{font-size:1.5rem;margin:0 0 6px}h2{font-size:1.2rem;margin:18px 0 8px}
+input[type=text]{width:100%;padding:11px;margin:6px 0 14px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+button{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:12px 24px;font:inherit;font-weight:600;cursor:pointer}
+button:disabled{opacity:.5}
 button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 .bar{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;justify-content:space-between;font-weight:600}
-.opt{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border:1px solid var(--line);border-radius:6px;margin:6px 0;cursor:pointer}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border:1px solid var(--line);border-radius:8px;margin:6px 0;cursor:pointer}
 .opt:has(input:checked){border-color:var(--acc);background:var(--bg)}
 .mute{color:var(--mute)}
 .score{font-size:2.6rem;font-weight:700;margin:4px 0}
 .r-ok{border-color:var(--ok)!important;background:var(--okbg)}
 .r-bad{border-color:var(--bad)!important;background:var(--badbg)}
+.exp{background:var(--tip);border-radius:8px;padding:10px 12px;margin-top:10px}
+.msg{background:var(--tip);border-radius:10px;padding:12px 14px;margin:10px 0}
 .hide{display:none}
+.big{font-size:2.4rem;display:inline-block;animation:bob 2.2s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-8px)}}
+.fl{position:fixed;top:-40px;pointer-events:none;z-index:20;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(112vh) rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.big{animation:none}}
 </style>
 </head>
 <body>
 <div id="bar" class="bar hide"><span id="prog"></span><span id="timer"></span></div>
 <div class="wrap">
   <div id="start" class="card">
-    <h1 id="title">Loading…</h1>
+    <div class="big">🌸</div>
+    <h1 id="title">লোড হচ্ছে…</h1>
     <p id="info" class="mute"></p>
-    <label>Tomar nam<input type="text" id="name" autocomplete="name"></label>
-    <label>Roll / Phone / ID<input type="text" id="sid"></label>
+    <div class="msg" id="hello"></div>
+    <label>তোমার নাম<input type="text" id="name" autocomplete="name"></label>
+    <label>রোল / ফোন / আইডি<input type="text" id="sid"></label>
     <p id="err" style="color:var(--bad)"></p>
-    <button id="go" disabled>Exam shuru koro</button>
+    <button id="go" disabled>পরীক্ষা শুরু করো</button>
   </div>
   <div id="exam" class="hide"></div>
   <div id="result" class="hide"></div>
 </div>
 <script>
-// ===== CONFIG: Google Apps Script Web App URL ekhane boshao =====
+// ===== CONFIG =====
 const SAVE_URL = "PASTE_YOUR_APPS_SCRIPT_URL_HERE";
-// ================================================================
+const WISH_NAME = "Borsha";
+// ==================
 const $ = id => document.getElementById(id);
-const L = ["A","B","C","D","E"];
-let data, tick, left, startedAt, submitted=false;
-
+const L = ["ক","খ","গ","ঘ","ঙ"];
+let data, tick, left, startedAt, submitted=false, NEG=0.25;
 const params = new URLSearchParams(location.search);
 const d = new Date();
 const today = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const setName = params.get("set") || today;
+const esc = t => String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = n => String(parseFloat(n.toFixed(2)));
 
 const get=n=>fetch("questions/"+n+".json?v="+Date.now()).then(r=>{if(!r.ok)throw 0;return r.json()});
 get(setName).catch(()=>params.get("set")?Promise.reject():get("default")).then(j=>{
-  data=j; $("title").textContent=j.title||"Online Exam";
-  $("info").textContent=j.questions.length+" ta question • "+j.minutes+" minute • Prottek question 1 mark";
+  data=j; NEG=j.negative??0.25; $("title").textContent=j.title||"পরীক্ষা";
+  $("info").textContent=j.questions.length+"টি প্রশ্ন • "+j.minutes+" মিনিট • প্রতিটি ১ নম্বর • ভুল উত্তরে −"+NEG+" নম্বর";
+  $("hello").textContent="শুভকামনা, "+WISH_NAME+"! নিজের ওপর বিশ্বাস রাখো, শান্ত মনে পড়ো। তুমি অবশ্যই পারবে 💖";
   $("go").disabled=false;
-}).catch(()=>{ $("title").textContent="Ajker exam ekhono ready na"; $("info").textContent="Exam file pawa jayni ("+setName+"). Pore abar try koro."; });
+}).catch(()=>{ $("title").textContent="আজকের পরীক্ষা এখনো প্রস্তুত নয়"; $("info").textContent="প্রশ্নের ফাইল পাওয়া যায়নি ("+setName+")। পরে আবার চেষ্টা করো।"; });
 
 $("go").onclick=()=>{
   const name=$("name").value.trim(), sid=$("sid").value.trim();
-  if(!name||!sid){$("err").textContent="Nam ar Roll/Phone dao.";return}
-  if(localStorage.getItem("done_"+setName+"_"+sid)){$("err").textContent="Ei ID diye ei exam age-i deya hoyeche.";return}
+  if(!name||!sid){$("err").textContent="নাম আর রোল/ফোন দাও।";return}
+  if(localStorage.getItem("done_"+setName+"_"+sid)){$("err").textContent="এই আইডি দিয়ে পরীক্ষা আগেই দেওয়া হয়েছে।";return}
   render(); $("start").classList.add("hide"); $("exam").classList.remove("hide"); $("bar").classList.remove("hide");
   left=data.minutes*60; startedAt=Date.now(); clock(); tick=setInterval(clock,1000);
 };
 
 function render(){
-  $("exam").innerHTML=data.questions.map((q,i)=>`<div class="card"><b>${i+1}. ${esc(q.q)}</b>`+
+  $("exam").innerHTML=`<div class="msg">মন দিয়ে পড়ো, ${WISH_NAME}। 💪 ভুল উত্তরে নম্বর কাটা যায়, তাই না জানলে অনুমান না করে ছেড়ে দিতে পারো।</div>`+
+  data.questions.map((q,i)=>`<div class="card"><b>${i+1}. ${esc(q.q)}</b>`+
     q.options.map((o,k)=>`<label class="opt"><input type="radio" name="q${i}" value="${k}"><span>${L[k]}. ${esc(o)}</span></label>`).join("")+`</div>`).join("")+
-    `<button id="sub">Submit koro</button>`;
-  $("exam").addEventListener("change",count); $("sub").onclick=()=>{ if(confirm("Submit korbe?")) finish(); };
+    `<button id="sub">জমা দাও</button>`;
+  $("exam").addEventListener("change",count); $("sub").onclick=()=>{ if(confirm("জমা দিতে চাও?")) finish(); };
   count();
 }
-function count(){ const n=document.querySelectorAll("#exam input:checked").length; $("prog").textContent="Uttor dewa: "+n+"/"+data.questions.length; }
-function clock(){ if(left<=0){finish();return} const m=Math.floor(left/60),s=left%60; $("timer").textContent=m+":"+String(s).padStart(2,"0"); left--; }
-function esc(t){return String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function count(){ const n=document.querySelectorAll("#exam input:checked").length; $("prog").textContent="উত্তর দেওয়া: "+n+"/"+data.questions.length; }
+function clock(){ if(left<=0){finish();return} const m=Math.floor(left/60),s=left%60; $("timer").textContent="⏱ "+m+":"+String(s).padStart(2,"0"); left--; }
 
+function motivate(p){
+  if(p>=80)return "অসাধারণ! তুমি দারুণ প্রস্তুত। এই ছন্দটা ধরে রাখো, মেডিকেলের স্বপ্ন তোমার হাতের নাগালেই। 🌟";
+  if(p>=60)return "খুব ভালো হয়েছে! আর একটু ঝালাই করলেই আরও ওপরে যাবে। নিচের ভুলগুলো একবার পড়ে নাও। 💪";
+  if(p>=40)return "ভালো শুরু! প্রতিদিনের ছোট ছোট চেষ্টাই বড় ফল আনে। ভুলগুলো থেকেই সবচেয়ে বেশি শেখা যায়। 🌱";
+  return "মন খারাপ কোরো না। প্রতিটি ভুলই একটি নতুন শেখা। নিচের ব্যাখ্যাগুলো পড়ো, কাল আরও ভালো হবে। আমি জানি তুমি পারবে! 🌈";
+}
 function finish(){
   if(submitted)return; submitted=true; clearInterval(tick);
   const name=$("name").value.trim(), sid=$("sid").value.trim();
-  let score=0, wrong=[], html="";
+  let right=0, bad=0, skip=0, wrong=[], wh="", rh="";
   data.questions.forEach((q,i)=>{
-    const c=document.querySelector(`input[name=q${i}]:checked`), pick=c?+c.value:-1, right=q.answer-1;
-    if(pick===right)score++; else wrong.push("Q"+(i+1)+":"+(pick<0?"-":L[pick])+" (sothik "+L[right]+")");
-    html+=`<div class="card"><b>${i+1}. ${esc(q.q)}</b>`+q.options.map((o,k)=>
-      `<div class="opt ${k===right?"r-ok":(k===pick?"r-bad":"")}">${L[k]}. ${esc(o)}${k===right?" ✔ sothik uttor":""}${k===pick&&k!==right?" ✘ tomar uttor":""}</div>`).join("")+
-      (pick<0?`<p class="mute">Uttor deoa hoyni</p>`:"")+`</div>`;
+    const c=document.querySelector(`input[name=q${i}]:checked`), pick=c?+c.value:-1, ans=q.answer-1, ok=pick===ans;
+    if(ok)right++; else if(pick<0)skip++; else bad++;
+    if(!ok)wrong.push("Q"+(i+1)+":"+(pick<0?"-":L[pick])+" (সঠিক "+L[ans]+")");
+    const h=`<div class="card"><b>${i+1}. ${esc(q.q)}</b>`+q.options.map((o,k)=>
+      `<div class="opt ${k===ans?"r-ok":(k===pick?"r-bad":"")}">${L[k]}. ${esc(o)}${k===ans?" ✔ সঠিক উত্তর":""}${k===pick&&!ok?" ✘ তোমার উত্তর":""}</div>`).join("")+
+      (pick<0?`<p class="mute">উত্তর দেওয়া হয়নি</p>`:"")+
+      (!ok&&q.e?`<div class="exp">💡 <b>কেন এটা সঠিক:</b> ${esc(q.e)}</div>`:"")+`</div>`;
+    if(ok)rh+=h; else wh+=h;
   });
-  const total=data.questions.length, pct=Math.round(score/total*100), used=Math.round((Date.now()-startedAt)/1000);
+  const total=data.questions.length, marks=right-bad*NEG, pct=Math.max(0,Math.round(marks/total*100)), used=Math.round((Date.now()-startedAt)/1000);
   $("exam").classList.add("hide"); $("bar").classList.add("hide");
-  $("result").innerHTML=`<div class="card"><h1>${esc(name)}, tomar result</h1><div class="score">${score} / ${total}</div>
-    <p>${pct}% • Vul: ${total-score} ta</p><p id="saved" class="mute">Result save hocche…</p></div>`+html;
-  $("result").classList.remove("hide"); scrollTo(0,0);
+  $("result").innerHTML=`<div class="card"><div class="big">🎉</div><h1>অভিনন্দন, ${WISH_NAME}!</h1>
+    <p>পরীক্ষা শেষ করেছো, এটাই অনেক বড় একটা ধাপ। তোমার জন্য অনেক অনেক শুভকামনা! 🌸💖</p>
+    <div class="score">${fmt(marks)} / ${total}</div>
+    <p>✔ সঠিক ${right} • ✘ ভুল ${bad} (−${fmt(bad*NEG)}) • ➖ ফাঁকা ${skip}</p>
+    <div class="msg">${motivate(pct)}</div><p id="saved" class="mute">ফলাফল সেভ হচ্ছে…</p></div>`+
+    (wh?`<h2>🔍 যেগুলো ভুল বা ফাঁকা ছিল (${bad+skip}টি): ব্যাখ্যাসহ পড়ো</h2>`+wh:`<div class="card">একটাও ভুল নেই! 👏</div>`)+
+    (rh?`<h2>✅ যেগুলো ঠিক ছিল (${right}টি)</h2>`+rh:"");
+  $("result").classList.remove("hide"); scrollTo(0,0); confetti();
   localStorage.setItem("done_"+setName+"_"+sid,"1");
-  save({examDate:setName,title:data.title||"",name,id:sid,score,total,percent:pct,timeUsed:used,wrong:wrong.join("; ")});
+  save({examDate:setName,title:data.title||"",name,id:sid,score:fmt(marks),total,percent:pct,timeUsed:used,wrong:"সঠিক "+right+", ভুল "+bad+", ফাঁকা "+skip+" | "+wrong.join("; ")});
+}
+function confetti(){
+  if(matchMedia("(prefers-reduced-motion:reduce)").matches)return;
+  const em=["🌸","💖","⭐","✨","🌷"];
+  for(let i=0;i<26;i++){const e=document.createElement("div");e.className="fl";e.textContent=em[i%em.length];
+    e.style.left=Math.random()*96+"vw";e.style.fontSize=(16+Math.random()*16)+"px";
+    e.style.animationDuration=(4+Math.random()*3)+"s";e.style.animationDelay=(Math.random()*1.5)+"s";
+    document.body.appendChild(e);setTimeout(()=>e.remove(),9000);}
 }
 function save(p){
-  if(SAVE_URL.startsWith("PASTE")){$("saved").textContent="Save setup kora hoyni (SAVE_URL boshao).";return}
+  if(SAVE_URL.startsWith("PASTE")){$("saved").textContent="সেভ সেটআপ করা হয়নি (SAVE_URL বসাও)।";return}
   fetch(SAVE_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify(p)})
-   .then(()=>$("saved").textContent="Result save hoyeche ✔").catch(()=>$("saved").textContent="Save hoyni, internet check koro.");
+   .then(()=>$("saved").textContent="ফলাফল সেভ হয়েছে ✔").catch(()=>$("saved").textContent="সেভ হয়নি, ইন্টারনেট চেক করো।");
 }
 </script>
 </body>
