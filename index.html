@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Online Exam</title>
+<style>
+:root{--bg:#f2f5f8;--card:#fff;--ink:#16202e;--mute:#5d6b7c;--line:#d9e0e8;--acc:#0b6e8a;--ok:#13795b;--bad:#b3261e;--okbg:#e4f5ee;--badbg:#fdeceb}
+@media(prefers-color-scheme:dark){:root{--bg:#10161d;--card:#18212b;--ink:#e8edf3;--mute:#93a1b2;--line:#2b3744;--acc:#4cb5d3;--ok:#4cc79f;--bad:#ff8a80;--okbg:#12342a;--badbg:#3a1a18}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,"Noto Sans Bengali","Segoe UI",sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:14px}
+h1{font-size:1.5rem;margin:0 0 6px}
+input[type=text]{width:100%;padding:11px;margin:6px 0 14px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+button{background:var(--acc);color:#fff;border:0;border-radius:6px;padding:12px 22px;font:inherit;font-weight:600;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.bar{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;justify-content:space-between;font-weight:600}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border:1px solid var(--line);border-radius:6px;margin:6px 0;cursor:pointer}
+.opt:has(input:checked){border-color:var(--acc);background:var(--bg)}
+.mute{color:var(--mute)}
+.score{font-size:2.6rem;font-weight:700;margin:4px 0}
+.r-ok{border-color:var(--ok)!important;background:var(--okbg)}
+.r-bad{border-color:var(--bad)!important;background:var(--badbg)}
+.hide{display:none}
+</style>
+</head>
+<body>
+<div id="bar" class="bar hide"><span id="prog"></span><span id="timer"></span></div>
+<div class="wrap">
+  <div id="start" class="card">
+    <h1 id="title">Loading…</h1>
+    <p id="info" class="mute"></p>
+    <label>Tomar nam<input type="text" id="name" autocomplete="name"></label>
+    <label>Roll / Phone / ID<input type="text" id="sid"></label>
+    <p id="err" style="color:var(--bad)"></p>
+    <button id="go" disabled>Exam shuru koro</button>
+  </div>
+  <div id="exam" class="hide"></div>
+  <div id="result" class="hide"></div>
+</div>
+<script>
+// ===== CONFIG: Google Apps Script Web App URL ekhane boshao =====
+const SAVE_URL = "PASTE_YOUR_APPS_SCRIPT_URL_HERE";
+// ================================================================
+const $ = id => document.getElementById(id);
+const L = ["A","B","C","D","E"];
+let data, tick, left, startedAt, submitted=false;
+
+const params = new URLSearchParams(location.search);
+const d = new Date();
+const today = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const setName = params.get("set") || today;
+
+const get=n=>fetch("questions/"+n+".json?v="+Date.now()).then(r=>{if(!r.ok)throw 0;return r.json()});
+get(setName).catch(()=>params.get("set")?Promise.reject():get("default")).then(j=>{
+  data=j; $("title").textContent=j.title||"Online Exam";
+  $("info").textContent=j.questions.length+" ta question • "+j.minutes+" minute • Prottek question 1 mark";
+  $("go").disabled=false;
+}).catch(()=>{ $("title").textContent="Ajker exam ekhono ready na"; $("info").textContent="Exam file pawa jayni ("+setName+"). Pore abar try koro."; });
+
+$("go").onclick=()=>{
+  const name=$("name").value.trim(), sid=$("sid").value.trim();
+  if(!name||!sid){$("err").textContent="Nam ar Roll/Phone dao.";return}
+  if(localStorage.getItem("done_"+setName+"_"+sid)){$("err").textContent="Ei ID diye ei exam age-i deya hoyeche.";return}
+  render(); $("start").classList.add("hide"); $("exam").classList.remove("hide"); $("bar").classList.remove("hide");
+  left=data.minutes*60; startedAt=Date.now(); clock(); tick=setInterval(clock,1000);
+};
+
+function render(){
+  $("exam").innerHTML=data.questions.map((q,i)=>`<div class="card"><b>${i+1}. ${esc(q.q)}</b>`+
+    q.options.map((o,k)=>`<label class="opt"><input type="radio" name="q${i}" value="${k}"><span>${L[k]}. ${esc(o)}</span></label>`).join("")+`</div>`).join("")+
+    `<button id="sub">Submit koro</button>`;
+  $("exam").addEventListener("change",count); $("sub").onclick=()=>{ if(confirm("Submit korbe?")) finish(); };
+  count();
+}
+function count(){ const n=document.querySelectorAll("#exam input:checked").length; $("prog").textContent="Uttor dewa: "+n+"/"+data.questions.length; }
+function clock(){ if(left<=0){finish();return} const m=Math.floor(left/60),s=left%60; $("timer").textContent=m+":"+String(s).padStart(2,"0"); left--; }
+function esc(t){return String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+
+function finish(){
+  if(submitted)return; submitted=true; clearInterval(tick);
+  const name=$("name").value.trim(), sid=$("sid").value.trim();
+  let score=0, wrong=[], html="";
+  data.questions.forEach((q,i)=>{
+    const c=document.querySelector(`input[name=q${i}]:checked`), pick=c?+c.value:-1, right=q.answer-1;
+    if(pick===right)score++; else wrong.push("Q"+(i+1)+":"+(pick<0?"-":L[pick])+" (sothik "+L[right]+")");
+    html+=`<div class="card"><b>${i+1}. ${esc(q.q)}</b>`+q.options.map((o,k)=>
+      `<div class="opt ${k===right?"r-ok":(k===pick?"r-bad":"")}">${L[k]}. ${esc(o)}${k===right?" ✔ sothik uttor":""}${k===pick&&k!==right?" ✘ tomar uttor":""}</div>`).join("")+
+      (pick<0?`<p class="mute">Uttor deoa hoyni</p>`:"")+`</div>`;
+  });
+  const total=data.questions.length, pct=Math.round(score/total*100), used=Math.round((Date.now()-startedAt)/1000);
+  $("exam").classList.add("hide"); $("bar").classList.add("hide");
+  $("result").innerHTML=`<div class="card"><h1>${esc(name)}, tomar result</h1><div class="score">${score} / ${total}</div>
+    <p>${pct}% • Vul: ${total-score} ta</p><p id="saved" class="mute">Result save hocche…</p></div>`+html;
+  $("result").classList.remove("hide"); scrollTo(0,0);
+  localStorage.setItem("done_"+setName+"_"+sid,"1");
+  save({examDate:setName,title:data.title||"",name,id:sid,score,total,percent:pct,timeUsed:used,wrong:wrong.join("; ")});
+}
+function save(p){
+  if(SAVE_URL.startsWith("PASTE")){$("saved").textContent="Save setup kora hoyni (SAVE_URL boshao).";return}
+  fetch(SAVE_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify(p)})
+   .then(()=>$("saved").textContent="Result save hoyeche ✔").catch(()=>$("saved").textContent="Save hoyni, internet check koro.");
+}
+</script>
+</body>
+</html>
